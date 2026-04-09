@@ -1,4 +1,3 @@
 requests
-shelve
 numpy
 pyotp

@@ -58,7 +58,6 @@ cookies = {
     "_RoliVerification": os.environ.get("_RoliVerification"),
     "_RoliData": os.environ.get("_RoliData")
 }
-
 headers = {
     "User-Agent": "Mozilla/5.0"
 }
