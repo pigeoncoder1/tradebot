@@ -426,7 +426,13 @@ def main():
         return
 
     if is_new_day():
-        target_users = len(bots) * 500
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM users")
+        conn.commit()
+        conn.close()
+        print("All records deleted from 'users' table.")
+        target_users = len(bots) * 400
         print(f"[INFO] New day detected. Ensuring at least {target_users} users in main.db...")
         populate_users_for_bots(len(bots), target_users)
     else:
