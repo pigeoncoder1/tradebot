@@ -465,7 +465,7 @@ def run_once():
         conn.close()
         print("All records deleted from 'users' table.")
 
-        target_users = len(bots) * 400
+        target_users = len(bots) * 100
         print(f"[INFO] New day detected. Ensuring at least {target_users} users in main.db...")
         populate_users_for_bots(len(bots), target_users)
     else:
