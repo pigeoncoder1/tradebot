@@ -16,7 +16,8 @@ from noob_finder import load_proxies, get_target_owner_ids, filter_users
 from twofa import RobloxAuthenticator, Roblox2FAError
 from trade_calc import calculate_trade, normalize_best_trade
 from owned_items import find_and_calc_items
-
+import os
+print(os.listdir("storage"))
 class TradeSendSkip(Exception):
     pass
 
