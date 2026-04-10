@@ -2,7 +2,7 @@
 # Deletes all rows from the 'users' table in main.db
 import sqlite3
 
-DB_PATH = "main.db"
+DB_PATH = "storage/main.db"
 
 def clear_users_table(db_path):
 	conn = sqlite3.connect(db_path)

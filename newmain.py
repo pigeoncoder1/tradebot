@@ -20,7 +20,7 @@ from owned_items import find_and_calc_items
 class TradeSendSkip(Exception):
     pass
 
-DB_PATH = "main.db"
+DB_PATH = "storage/main.db"
 NUM_THREADS = 10
 TRADE_SEND_URL = "https://trades.roblox.com/v2/trades/send"
 

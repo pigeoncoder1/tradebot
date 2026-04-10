@@ -98,7 +98,7 @@ def get_target_owner_ids(assetId: int, proxies) -> list[int]:
 
 def filter_users(owner_ids: list[int], proxies) -> list[int]:
     valid_users = []
-    conn = sqlite3.connect("main.db")
+    conn = sqlite3.connect("storage/main.db")
     c = conn.cursor()
     # Create table if it doesn't exist
     c.execute("""
