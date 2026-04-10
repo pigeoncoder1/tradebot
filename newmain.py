@@ -22,7 +22,7 @@ class TradeSendSkip(Exception):
     pass
 
 DB_PATH = "storage/main.db"
-NUM_THREADS = 2
+NUM_THREADS = 10
 TRADE_SEND_URL = "https://trades.roblox.com/v2/trades/send"
 
 BOT_ITEMS_CACHE = {}
@@ -58,6 +58,7 @@ def populate_users_for_bots(num_bots, target_users, asset_ids=None):
         current_count = get_user_count(DB_PATH)
         if current_count >= target_users:
             print(f"[INFO] Target reached: {current_count} / {target_users}")
+            keep_finding = False
             return
 
         for asset_id in asset_ids:
@@ -151,7 +152,7 @@ def proxy_request(url, *, headers=None, cookies=None, timeout=20, proxies_list=N
             print(f"[WARN] Request error with proxy {proxy}: {e}. Switching proxy...")
             tries += 1
             proxy_idx += 1
-            time.sleep(0.5)
+            time.sleep(3)
 
     raise Exception(f"Failed to fetch {url} after {max_retries} attempts with proxies.")
 
@@ -368,6 +369,16 @@ def process_user(user_id, bots):
     user_items = load_user_items_with_any_bot_cookie(user_id, bots)
     if not user_items:
         print(f"[SKIP] user={user_id} -> no user items")
+        # Remove user from DB if no items found
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
+            conn.commit()
+            conn.close()
+            print(f"[REMOVE] user={user_id} removed from DB (no items)")
+        except Exception as e:
+            print(f"[ERROR] Failed to remove user {user_id} from DB: {e}")
         return None
 
     for bot in bots:
@@ -391,6 +402,16 @@ def process_user(user_id, bots):
 
         if not best_trade:
             print(f"[SKIP] bot={bot_id} user={user_id} -> no trade found")
+            # Remove user from DB if no items found
+            try:
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
+                conn.commit()
+                conn.close()
+                print(f"[REMOVE] user={user_id} removed from DB (no items)")
+            except Exception as e:
+                print(f"[ERROR] Failed to remove user {user_id} from DB: {e}")
             continue
 
         try:
@@ -432,6 +453,16 @@ def process_user(user_id, bots):
             continue
 
     print(f"[USER_DONE] user={user_id} -> no bot could send")
+    # Remove user from DB if no trade could be sent
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
+        conn.commit()
+        conn.close()
+        print(f"[REMOVE] user={user_id} removed from DB (no trade found)")
+    except Exception as e:
+        print(f"[ERROR] Failed to remove user {user_id} from DB: {e}")
     return None
 
 

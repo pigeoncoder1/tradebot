@@ -29,13 +29,20 @@ def proxy_dict(proxy_str):
         proxy_url = f"http://{ip}:{port}"
     return {"http": proxy_url, "https": proxy_url}
 
+
+# --- Proxy rotation state ---
+_global_proxy_index = 0
+
 def roli_request(url, *, headers=None, cookies=None, timeout=20, proxies_list=None, max_retries=1, **kwargs):
+    global _global_proxy_index
     if proxies_list is None:
         proxies_list = [None]
     tries = 0
-    proxy_idx = 0
+    num_proxies = len(proxies_list)
+    start_idx = _global_proxy_index % num_proxies
+    proxy_idx = start_idx
     while tries < max_retries:
-        proxy = proxies_list[proxy_idx % len(proxies_list)]
+        proxy = proxies_list[proxy_idx % num_proxies]
         proxy_cfg = proxy_dict(proxy) if proxy else None
         try:
             resp = requests.get(url, headers=headers, cookies=cookies, timeout=timeout, proxies=proxy_cfg, **kwargs)
@@ -43,15 +50,19 @@ def roli_request(url, *, headers=None, cookies=None, timeout=20, proxies_list=No
                 print(f"Rate limited with proxy {proxy}. Switching proxy...")
                 tries += 1
                 proxy_idx += 1
-                time.sleep(0.2)
+                time.sleep(2)
                 continue
             resp.raise_for_status()
+            # Update global proxy index for next request
+            _global_proxy_index = (proxy_idx + 1) % num_proxies
             return resp
         except requests.RequestException as e:
             print(f"Request error with proxy {proxy}: {e}. Switching proxy...")
             tries += 1
             proxy_idx += 1
-            time.sleep(0.2)
+            time.sleep(2)
+    # Update global proxy index even on failure
+    _global_proxy_index = (proxy_idx + 1) % num_proxies
     raise Exception(f"Failed to fetch {url} after {max_retries} attempts with proxies.")
 
 cookies = {
@@ -91,12 +102,13 @@ def get_target_owner_ids(assetId: int, proxies) -> list[int]:
         days = age.total_seconds() / 86400
 
         # 🎯 keep only 2–4 days OR 7–8 days
-        if (2 <= days <= 3):
+        if (2 <= days <= 4):
             filtered.append(owner_id)
 
     return filtered
 
-def filter_users(owner_ids: list[int], proxies) -> list[int]:
+
+def filter_users(owner_ids: list[int], proxies, user_limit=100) -> list[int]:
     valid_users = []
     conn = sqlite3.connect("storage/main.db")
     c = conn.cursor()
@@ -107,7 +119,20 @@ def filter_users(owner_ids: list[int], proxies) -> list[int]:
         )
     """)
     conn.commit()
+    # Get current user count in DB
+    c.execute("SELECT COUNT(*) FROM users")
+    current_count = c.fetchone()[0]
+    if current_count >= user_limit:
+        print(f"User limit of {user_limit} already reached. Skipping.")
+        conn.close()
+        return valid_users
     for user_id in owner_ids:
+        # Check if we've hit the user limit
+        c.execute("SELECT COUNT(*) FROM users")
+        current_count = c.fetchone()[0]
+        if current_count >= user_limit:
+            print(f"User limit of {user_limit} reached. Stopping.")
+            break
         try:
             # Check if user_id already exists in the database BEFORE making the API call
             c.execute("SELECT 1 FROM users WHERE user_id = ?", (user_id,))
@@ -126,7 +151,6 @@ def filter_users(owner_ids: list[int], proxies) -> list[int]:
             skip_badges = [
                 "own_100_items",
                 "own_10_of_1_item",
-                "create_100_trade_ads",
                 "value_500k"
             ]
             if any(badge in badges for badge in skip_badges):
@@ -135,7 +159,7 @@ def filter_users(owner_ids: list[int], proxies) -> list[int]:
 
             player_assets = data.get("playerAssets", {})
 
-            if len(player_assets) < 14:
+            if len(player_assets) < 16:
                 c.execute("INSERT INTO users (user_id) VALUES (?)", (user_id,))
                 conn.commit()
                 valid_users.append(user_id)
@@ -143,7 +167,7 @@ def filter_users(owner_ids: list[int], proxies) -> list[int]:
             else:
                 print(str(user_id) + " was not added to db")
 
-            time.sleep(0.05)
+            time.sleep(2)
 
         except Exception as e:
             print(f"Error with user {user_id}: {e}")
@@ -159,7 +183,17 @@ if __name__ == "__main__":
     if not proxies:
         print("No proxies loaded! Exiting.")
         exit(1)
+    USER_LIMIT = 100
     for assetId in assetIds:
         owners = get_target_owner_ids(assetId, proxies)
-        final_users = filter_users(owners, proxies)
-        print(f"Stored {len(final_users)} users in the SQLite database.")
+        final_users = filter_users(owners, proxies, user_limit=USER_LIMIT)
+        # Check if user limit reached after each assetId
+        conn = sqlite3.connect("storage/main.db")
+        c = conn.cursor()
+        c.execute("SELECT COUNT(*) FROM users")
+        current_count = c.fetchone()[0]
+        conn.close()
+        print(f"Stored {len(final_users)} users in the SQLite database (this run). Total in DB: {current_count}")
+        if current_count >= USER_LIMIT:
+            print(f"User limit of {USER_LIMIT} reached. Exiting.")
+            break
