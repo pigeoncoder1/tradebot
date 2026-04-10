@@ -22,7 +22,7 @@ class TradeSendSkip(Exception):
     pass
 
 DB_PATH = "storage/main.db"
-NUM_THREADS = 10
+NUM_THREADS = 2
 TRADE_SEND_URL = "https://trades.roblox.com/v2/trades/send"
 
 BOT_ITEMS_CACHE = {}
@@ -117,7 +117,7 @@ def proxy_dict(proxy_str: str) -> Optional[dict]:
     return {"http": proxy_url, "https": proxy_url}
 
 
-def proxy_request(url, *, headers=None, cookies=None, timeout=20, proxies_list=None, max_retries=10, **kwargs):
+def proxy_request(url, *, headers=None, cookies=None, timeout=20, proxies_list=None, max_retries=1, **kwargs):
     if proxies_list is None or not proxies_list:
         proxies_list = [None]
 

@@ -28,8 +28,8 @@ def request_with_rotating_proxies(
     *,
     params=None,
     timeout=20,
-    max_proxy_switches=10,
-    retries_per_proxy=2,
+    max_proxy_switches=3,
+    retries_per_proxy=1,
     retry_on_status=(429,),
 ):
     """

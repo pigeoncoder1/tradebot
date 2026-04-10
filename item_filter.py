@@ -39,8 +39,8 @@ def get_collectibles(user_id: int, roblosecurity_cookie: str) -> list[dict]:
             url,
             params=params,
             timeout=20,
-            max_proxy_switches=10,
-            retries_per_proxy=2,
+            max_proxy_switches=3,
+            retries_per_proxy=1,
             retry_on_status=(429,),
         )
 
@@ -90,8 +90,8 @@ def get_rolimons_item_data(asset_id: int, session: requests.Session) -> Optional
         "GET",
         url,
         timeout=20,
-        max_proxy_switches=10,
-        retries_per_proxy=2,
+        max_proxy_switches=3,
+        retries_per_proxy=1,
         retry_on_status=(403, 429),   # add 403 here
     )
 
