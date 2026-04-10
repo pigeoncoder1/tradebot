@@ -17,6 +17,9 @@ from twofa import RobloxAuthenticator, Roblox2FAError
 from trade_calc import calculate_trade, normalize_best_trade
 from owned_items import find_and_calc_items
 
+class TradeSendSkip(Exception):
+    pass
+
 DB_PATH = "main.db"
 NUM_THREADS = 10
 TRADE_SEND_URL = "https://trades.roblox.com/v2/trades/send"
@@ -263,6 +266,32 @@ def send_trade(
         if token:
             session.headers["X-CSRF-TOKEN"] = token
 
+    if resp.status_code == 400:
+        try:
+            body = resp.json()
+        except Exception:
+            body = {}
+
+        for err in body.get("errors", []):
+            code = err.get("code")
+            field = err.get("field")
+            message = (err.get("message") or "").lower()
+
+            if code == 22 and field == "recipient":
+                raise TradeSendSkip(
+                    f"recipient privacy too strict for user {recipient_user_id}"
+                )
+
+            if "privacy settings are too strict" in message:
+                raise TradeSendSkip(
+                    f"privacy settings blocked trade for user {recipient_user_id}"
+                )
+
+            if "trade partner is not available" in message:
+                raise TradeSendSkip(
+                    f"trade partner unavailable for user {recipient_user_id}"
+                )
+
     if not resp.ok:
         raise RuntimeError(
             f"Trade send failed: status={resp.status_code}, body={resp.text}, payload={json.dumps(payload)}"
@@ -391,6 +420,9 @@ def process_user(user_id, bots):
             print(f"[USER_DONE] user={user_id} handled by bot={bot_id}")
             return result
 
+        except TradeSendSkip as e:
+            print(f"[SKIP] bot={bot_id} user={user_id} -> {e}")
+            continue
         except Roblox2FAError as e:
             print(f"[ERROR] bot={bot_id} user={user_id} -> 2FA failed: {e}")
             continue
@@ -419,7 +451,7 @@ def worker(thread_id, user_chunk, bots):
     return sent_count
 
 
-def main():
+def run_once():
     bots = load_bots()
     if not bots:
         print("[ERROR] No bots loaded")
@@ -432,6 +464,7 @@ def main():
         conn.commit()
         conn.close()
         print("All records deleted from 'users' table.")
+
         target_users = len(bots) * 400
         print(f"[INFO] New day detected. Ensuring at least {target_users} users in main.db...")
         populate_users_for_bots(len(bots), target_users)
@@ -472,6 +505,16 @@ def main():
 
     print(f"[DONE] Total trades sent this run: {total_sent}")
 
+def main():
+    while True:
+        try:
+            print("[INFO] Starting run_once()")
+            run_once()
+            print("[INFO] Run finished. Sleeping for 24 hours...")
+        except Exception as e:
+            print(f"[FATAL] Top-level crash: {e}")
+
+        time.sleep(24 * 60 * 60)
 
 if __name__ == "__main__":
     main()
