@@ -141,7 +141,7 @@ def proxy_request(url, *, headers=None, cookies=None, timeout=20, proxies_list=N
                 print(f"[WARN] {resp.status_code} for {url} with proxy {proxy}. Switching proxy...")
                 tries += 1
                 proxy_idx += 1
-                time.sleep(0.5)
+                time.sleep(3)
                 continue
 
             resp.raise_for_status()
