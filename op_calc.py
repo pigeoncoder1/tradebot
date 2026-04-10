@@ -31,7 +31,7 @@ def get_item_sales_data(assetId: int, cookies: dict | None = None) -> dict:
 
     from noob_finder import load_proxies, proxy_dict
     proxies_list = load_proxies()
-    max_retries = 10
+    max_retries = 1
     tries = 0
     proxy_idx = 0
     while tries < max_retries:

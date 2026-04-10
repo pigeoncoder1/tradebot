@@ -29,7 +29,7 @@ def proxy_dict(proxy_str):
         proxy_url = f"http://{ip}:{port}"
     return {"http": proxy_url, "https": proxy_url}
 
-def roli_request(url, *, headers=None, cookies=None, timeout=20, proxies_list=None, max_retries=10, **kwargs):
+def roli_request(url, *, headers=None, cookies=None, timeout=20, proxies_list=None, max_retries=1, **kwargs):
     if proxies_list is None:
         proxies_list = [None]
     tries = 0
