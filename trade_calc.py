@@ -1,3 +1,34 @@
+import requests
+from item_filter import get_rolimons_item_data
+
+def print_true_trade_values(my_item_ids: list[int], their_item_ids: list[int]) -> None:
+    """
+    Given two lists of item ids, print the Rolimons value of each side and the total for each.
+    """
+    session = requests.Session()
+    print("My Side:")
+    my_total = 0
+    for asset_id in my_item_ids:
+        roli_data = get_rolimons_item_data(asset_id, session)
+        if not roli_data or not roli_data["item_details"].get("value"):
+            print(f"  Item {asset_id}: Value unavailable")
+            continue
+        true_value = 
+        print(f"  Item {asset_id}: {value}")
+        my_total += value
+    print(f"Total: {my_total}")
+
+    print("Their Side:")
+    their_total = 0
+    for asset_id in their_item_ids:
+        roli_data = get_rolimons_item_data(asset_id, session)
+        if not roli_data or not roli_data["item_details"].get("value"):
+            print(f"  Item {asset_id}: Value unavailable")
+            continue
+        value = roli_data["item_details"]["value"]
+        print(f"  Item {asset_id}: {value}")
+        their_total += value
+    print(f"Total: {their_total}")
 from itertools import combinations
 
 
@@ -204,3 +235,5 @@ def calculate_trade(my_items: list[dict], their_items: list[dict]) -> dict | Non
                     best_trade = make_trade_object(filtered_my, filtered_their, meta, score)
 
     return best_trade
+
+print(print_true_trade_values([152980413],[2528067691]))

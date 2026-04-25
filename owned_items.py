@@ -179,7 +179,6 @@ def find_and_calc_items(roblosecurity_cookie, user_id):
                 try:
                     item = get_rolimons_item_data(
                         limited.get("assetId"),
-                        roli_session,
                     )
                     break
                 except (requests.exceptions.ProxyError,

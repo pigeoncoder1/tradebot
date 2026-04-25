@@ -3,10 +3,9 @@ import json
 import re
 import requests
 import numpy as np
+import rolimons
+from wrapperTest import find_average_sales
 
-from item_filter import (
-    get_rolimons_item_data
-)
 
 roli_cookies = {
     "_RoliVerification": os.environ.get("_RoliVerification"),
@@ -208,6 +207,20 @@ def estimate_null_item_levels(
 
     return add_trade_prices(result, quick_value)
 
+def extract_sales_lists(sales):
+    """
+    Given a list of Sale objects (each constructed as Sale([timestamp, sales_price, rap_before, rap_after])),
+    return three lists: timestamps, sales_prices, and rap_after_list.
+    """
+    timestamps = []
+    sales_prices = []
+    rap_after_list = []
+    for sale in sales:
+        # Assuming sale.data is the list [timestamp, sales_price, rap_before, rap_after]
+        timestamps.append(sale.timestamp)
+        sales_prices.append(sale.sales_price)
+        rap_after_list.append(sale.new_rap)
+    return timestamps, sales_prices, rap_after_list
 
 def estimate_valued_item_levels(
     x: np.ndarray,
@@ -280,7 +293,7 @@ def estimate_valued_item_levels(
 
 def estimate_item_levels(
     prices: list[int],
-    item_info: dict,
+    item: rolimons.item,
     sale_rap_list: list[int] | None = None,
 ) -> dict:
     if len(prices) < 4:
@@ -289,14 +302,14 @@ def estimate_item_levels(
     raw_x = np.array(prices, dtype=float)
     x = trim_extreme_outliers(raw_x)
 
-    rap = item_info.get("recentAveragePrice")
+    rap = item.rap
     if rap is None and sale_rap_list:
         rap = sale_rap_list[-1]
     if rap is None:
         rap = int(round(np.median(x)))
 
-    roli_value = item_info["item_details"]["value"]
-    best_price = item_info["item_details"]["best_price"]
+    roli_value = item.value
+    best_price = item.
 
     if roli_value is None:
         result = estimate_null_item_levels(
@@ -317,23 +330,21 @@ def estimate_item_levels(
     return result
 
 
-def estimate_from_item(item_info: dict, sales_count: int = 200) -> dict:
-    assetId = item_info["item_details"]["item_id"]
-    item_sales = get_item_sales_data(assetId, roli_cookies)
+def estimate_from_item(id: int) -> dict:
+    item = rolimons.item(id)
+    assetId = item.id
+    item_sales = item.get_recent_sales()
+    timestamps, sale_prices, sale_rap_list = extract_sales_lists(item_sales)
 
-    sale_prices = item_sales.get("sale_price_list", [])
-    timestamps = item_sales.get("timestamp_list", [])
-    sale_rap_list = item_sales.get("sale_rap_list", [])
+    average_sales = find_average_sales(item_sales)
 
-    num_sales = item_info["avg_daily_sales_volume_30_days"]
-
-    if 1 < num_sales < 2:
+    if 1 < average_sales < 2:
         n=20
-    elif 2 < num_sales < 4:
+    elif 2 < average_sales < 4:
         n=40
-    elif 4 < num_sales < 10:
+    elif 4 < average_sales < 10:
         n=80
-    elif 10 < num_sales < 25:
+    elif 10 < average_sales < 25:
         n=120
     else:
         n=200
@@ -346,21 +357,15 @@ def estimate_from_item(item_info: dict, sales_count: int = 200) -> dict:
 
     result = estimate_item_levels(
         prices=recent_sales,
-        item_info=item_info,
+        item=item,
         sale_rap_list=sale_rap_list,
     )
 
     return {
-        "item_name": item_info.get("name"),
+        "item_name":item.name,
         "assetId": assetId,
-        "recent_sales_used": recent_sales[-25:],
-        "sales_sample_size": len(recent_sales),
         **result
     }
 
 
-if __name__ == "__main__":
-    item = get_rolimons_item_data(151786902, roli_session)
-    print(item)
-    result = estimate_from_item(item)
-    print(result)
+print(estimate_from_item(2528066922))

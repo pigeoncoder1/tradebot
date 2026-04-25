@@ -3,7 +3,7 @@ import requests
 import time
 import threading
 import itertools
-
+import os
 
 class ProxyManager:
     def __init__(self):
@@ -57,12 +57,17 @@ def request_with_rotating_proxies(
                     timeout=timeout,
                     proxies=proxies,
                 )
-
+                # proxymanager.py
+                if response.status_code == 403:
+                    print(f"[WARN] 403 blocked on {proxy}, rotating immediately...")
+                    break
                 if response.status_code in retry_on_status:
                     last_error = RuntimeError(
                         f"Retryable status {response.status_code} on proxy {proxy}"
                     )
                     if attempt < retries_per_proxy:
+                        print("_RoliVerification exists:", bool(os.environ.get("_RoliVerification")))
+                        print("_RoliData exists:", bool(os.environ.get("_RoliData")))
                         print(f"[WARN] Status {response.status_code} on {proxy}, retrying same proxy...")
                         time.sleep(1)
                         continue

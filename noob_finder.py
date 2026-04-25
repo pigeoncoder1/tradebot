@@ -44,8 +44,13 @@ def roli_request(url, *, headers=None, cookies=None, timeout=20, proxies_list=No
     while tries < max_retries:
         proxy = proxies_list[proxy_idx % num_proxies]
         proxy_cfg = proxy_dict(proxy) if proxy else None
+        print(f"[DEBUG] Attempt {tries+1}/{max_retries} for URL: {url}")
+        print(f"[DEBUG] Using proxy: {proxy}")
         try:
             resp = requests.get(url, headers=headers, cookies=cookies, timeout=timeout, proxies=proxy_cfg, **kwargs)
+            print(f"[DEBUG] Response status code: {resp.status_code}")
+            if resp.status_code != 200:
+                print(f"[DEBUG] Response text (truncated): {resp.text[:500]}")
             if resp.status_code == 429:
                 print(f"Rate limited with proxy {proxy}. Switching proxy...")
                 tries += 1
@@ -58,6 +63,9 @@ def roli_request(url, *, headers=None, cookies=None, timeout=20, proxies_list=No
             return resp
         except requests.RequestException as e:
             print(f"Request error with proxy {proxy}: {e}. Switching proxy...")
+            if 'resp' in locals():
+                print(f"[DEBUG] Exception response status: {resp.status_code if resp else 'N/A'}")
+                print(f"[DEBUG] Exception response text (truncated): {resp.text[:500] if resp else 'N/A'}")
             tries += 1
             proxy_idx += 1
             time.sleep(2)

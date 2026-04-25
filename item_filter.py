@@ -6,6 +6,7 @@ import json
 import time
 from typing import Optional
 import os
+import rolimons
 
 from proxymanager import request_with_rotating_proxies
 from noob_finder import load_proxies, proxy_dict
@@ -41,7 +42,7 @@ def get_collectibles(user_id: int, roblosecurity_cookie: str) -> list[dict]:
             timeout=20,
             max_proxy_switches=3,
             retries_per_proxy=1,
-            retry_on_status=(429,),
+            retry_on_status=(429,403),
         )
 
         if response.status_code == 401:
@@ -82,52 +83,19 @@ def get_collectibles(user_id: int, roblosecurity_cookie: str) -> list[dict]:
     return collectibles
 
 
-def get_rolimons_item_data(asset_id: int, session: requests.Session) -> Optional[dict]:
-    url = f"https://www.rolimons.com/item/{asset_id}"
-
-    response = request_with_rotating_proxies(
-        session,
-        "GET",
-        url,
-        timeout=20,
-        max_proxy_switches=3,
-        retries_per_proxy=1,
-        retry_on_status=(403, 429),   # add 403 here
-    )
-
-    response.raise_for_status()       # fail immediately on bad final response
-
-    html = response.text
-
-    details_match = re.search(
-        r'var\s+item_details_data\s*=\s*(\{.*?\});',
-        html,
-        re.DOTALL
-    )
-    if not details_match:
-        return None
-
-    volume_match = re.search(
-        r'var\s+avg_daily_sales_volume_30_days\s*=\s*([0-9.]+);',
-        html
-    )
-    if not volume_match:
-        return None
-
-    item_details = json.loads(details_match.group(1))
-    avg_daily_sales_volume_30_days = float(volume_match.group(1))
-
+def get_rolimons_item_data(asset_id: int) -> Optional[dict]:
+    tradeBot = False
+    item = rolimons.item(asset_id)
     # Calculate days since first_timestamp if present
-    first_timestamp = item_details.get("first_timestamp")
-    days_since_first_timestamp = None
-    if first_timestamp is not None:
-        try:
-            # first_timestamp is assumed to be a Unix timestamp (seconds)
-            now = int(time.time())
-            days_since_first_timestamp = (now - int(first_timestamp)) // 86400
-        except Exception:
-            days_since_first_timestamp = None
-
+    #if tradeBot:
+        #first_timestamp = item_details.get("first_timestamp")
+        #days_since_first_timestamp = None
+        #if first_timestamp is not None:
+        #   try:
+        #        now = int(time.time())
+        #        days_since_first_timestamp = (now - int(first_timestamp)) // 86400
+        #    except Exception:
+        #       days_since_first_timestamp = None
     return {
         "item_details": item_details,
         "avg_daily_sales_volume_30_days": avg_daily_sales_volume_30_days,
